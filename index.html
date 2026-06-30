@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#6d28d9">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ROI-laskuri">
+<title>Satafarma &amp; Greige ROI</title>
+<style>
+  :root{
+    --bg:#ffffff;--ink:#1f2433;--muted:#6b7280;--line:#e7e8ee;--track:#d9dbe4;
+    --accent:#6d28d9;--accent2:#8b5cf6;--maroon:#9b2d4f;--slate:#3f5060;--card:#fbfbfd;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);background:var(--bg);font-size:17px;line-height:1.4;padding-bottom:48px;
+  }
+  /* pinned top panel: brand + live result */
+  .topbar{
+    position:sticky;top:0;z-index:10;background:rgba(255,255,255,.94);
+    backdrop-filter:saturate(180%) blur(12px);
+    border-bottom:1px solid var(--line);box-shadow:0 6px 16px -12px rgba(0,0,0,.35);
+  }
+  .brand{display:flex;align-items:center;gap:11px;padding:11px 18px 4px}
+  .logo{width:30px;height:30px;border-radius:8px;flex:0 0 auto;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));position:relative}
+  .logo::before,.logo::after{content:"";position:absolute;left:6px;height:4px;border-radius:3px;background:#fff;opacity:.92}
+  .logo::before{top:10px;width:18px}
+  .logo::after{top:17px;width:11px}
+  .brand h1{font-size:16px;margin:0;font-weight:700;letter-spacing:-.01em}
+  .result{padding:2px 16px 12px;text-align:center}
+  .result .cap{font-size:14px;color:var(--muted)}
+  .result .big{font-size:32px;font-weight:800;letter-spacing:-.02em;margin:1px 0 4px;font-variant-numeric:tabular-nums}
+  .neg{color:var(--ink)}.pos{color:#15803d}
+  .chartbox{position:relative;width:100%;height:0;padding-bottom:46.67%;margin-top:6px}
+  .chartbox svg{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible}
+  .legend{display:flex;justify-content:center;flex-wrap:wrap;gap:6px 18px;margin-top:8px;font-size:13px;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .dot{width:12px;height:12px;border-radius:50%;flex:0 0 auto}
+
+  main{max-width:560px;margin:0 auto;padding:4px 18px 0}
+  section{padding:18px 0;border-bottom:1px solid var(--line)}
+  section:last-child{border-bottom:0}
+  h2{font-size:20px;font-weight:800;margin:0 0 16px;letter-spacing:-.01em}
+  h2.sub{font-size:16px;margin:24px 0 14px}
+
+  /* condensed slider */
+  .field{margin:0 0 16px}
+  .field:last-child{margin-bottom:0}
+  .frow{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:9px}
+  .flabel{font-size:15px;color:var(--ink)}
+  .fval{font-size:17px;font-weight:700;color:var(--ink);white-space:nowrap;font-variant-numeric:tabular-nums}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:3px;background:var(--track);outline:none;margin:0}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;border-radius:50%;background:var(--ink);cursor:pointer;border:none}
+  input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--ink);cursor:pointer;border:none}
+
+  .yeargrid{display:grid;grid-template-columns:1fr 1fr;gap:16px 20px}
+  .yeargrid .field{margin:0}
+  .yeargrid .flabel{font-size:16px;font-weight:600}
+
+  .tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse;width:100%;min-width:440px;font-variant-numeric:tabular-nums}
+  th,td{padding:12px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left;white-space:normal;color:var(--muted)}
+  thead th{font-size:18px;font-weight:700;color:var(--ink)}
+  tbody td,tbody th{font-size:16px;font-weight:600}
+  tr.saasto td,tr.saasto th{font-weight:800}
+
+  .assume ul{padding:0;margin:0}
+  .assume li{margin:8px 0;list-style:none;display:flex;align-items:center;gap:12px}
+  .assume .num{width:74px;text-align:center;padding:9px 0;border:1px solid var(--line);border-radius:10px;font-size:17px;background:var(--card);color:var(--ink);-webkit-appearance:none;appearance:none}
+  .bullet{width:8px;height:8px;border-radius:50%;background:var(--ink);flex:0 0 auto}
+  .note{color:var(--muted);font-size:14px;margin-top:16px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><div class="logo" aria-hidden="true"></div><h1>Satafarma &amp; Greige ROI</h1></div>
+  <div class="result">
+    <div class="cap">Säästöt 4v yhteensä</div>
+    <div class="big" id="totalSaasto"></div>
+    <div id="chartwrap" class="chartbox"></div>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--maroon)"></i>Palkkakulut</span>
+      <span><i class="dot" style="background:var(--slate)"></i>Ulkoistettu työ</span>
+    </div>
+  </div>
+</div>
+
+<main>
+  <section>
+    <h2>Työntekijä</h2>
+    <div class="field"><div class="frow"><span class="flabel">Työn arvo (bruttopalkka €/h)</span><span class="fval" id="empWage_v"></span></div>
+      <input type="range" id="empWage" min="10" max="60" step="0.5" value="23"></div>
+    <div class="field"><div class="frow"><span class="flabel">Vuoroja per viikko</span><span class="fval" id="empShifts_v"></span></div>
+      <input type="range" id="empShifts" min="0" max="7" step="0.5" value="3.5"></div>
+    <div class="field"><div class="frow"><span class="flabel">Palkallista lomaa (vko/v)</span><span class="fval" id="loma_v"></span></div>
+      <input type="range" id="loma" min="0" max="10" step="0.5" value="5"></div>
+    <div class="field"><div class="frow"><span class="flabel">Sivukulukerroin (apteekin)</span><span class="fval" id="sivukulu_v"></span></div>
+      <input type="range" id="sivukulu" min="1" max="2.5" step="0.05" value="1.7"></div>
+  </section>
+
+  <section>
+    <h2>Ulkoistettu</h2>
+    <div class="field"><div class="frow"><span class="flabel">Työn arvo (hinta €/h, alv0)</span><span class="fval" id="outPrice_v"></span></div>
+      <input type="range" id="outPrice" min="20" max="90" step="0.5" value="45"></div>
+    <div class="field"><div class="frow"><span class="flabel">Vuoroja per viikko</span><span class="fval" id="outShifts_v"></span></div>
+      <input type="range" id="outShifts" min="0" max="7" step="0.5" value="4"></div>
+    <h2 class="sub">Ulkoistettujen työntekijöiden määrä</h2>
+    <div class="yeargrid" id="yeargrid"></div>
+  </section>
+
+  <section>
+    <h2>Kustannusten vertailu</h2>
+    <div class="tablewrap"><table id="costTable"></table></div>
+  </section>
+
+  <section>
+    <h2>Lisämyynti</h2>
+    <div class="field"><div class="frow"><span class="flabel">Lisämyynti (€/pv, alv0)</span><span class="fval" id="lisa_v"></span></div>
+      <input type="range" id="lisa" min="0" max="200" step="5" value="50"></div>
+    <div class="tablewrap"><table id="lisaTable"></table></div>
+  </section>
+
+  <section class="assume">
+    <h2>Oletukset</h2>
+    <ul>
+      <li><span class="bullet"></span>Keskimääräisen vuoron pituus
+        <input class="num" id="shiftLen" type="number" inputmode="decimal" step="0.5" value="8"> tuntia</li>
+      <li><span class="bullet"></span>Työviikkoja vuodessa
+        <input class="num" id="weeksYear" type="number" inputmode="numeric" step="1" value="52"> vko</li>
+    </ul>
+    <p class="note">Työntekijän palkka maksetaan koko vuodelta (52 vko). Ulkoistettua työtä ja lisämyyntiä lasketaan vain todellisilta työviikoilta (52 − loma).</p>
+  </section>
+</main>
+
+<script>
+const YEARS=[2027,2028,2029,2030];
+const WORKERS=[1.0,1.5,2.0,3.0];
+const ids=["empWage","empShifts","loma","sivukulu","outPrice","outShifts","lisa","shiftLen","weeksYear"];
+const fmt0=new Intl.NumberFormat('fi-FI',{maximumFractionDigits:0});
+const fmt1=new Intl.NumberFormat('fi-FI',{minimumFractionDigits:1,maximumFractionDigits:1});
+const eur=n=>fmt0.format(Math.round(n))+"\u00A0€";
+const eur1=n=>fmt1.format(n)+"\u00A0€";
+const labelFmt={
+  empWage:v=>eur1(v),outPrice:v=>eur1(v),
+  empShifts:v=>fmt1.format(v),outShifts:v=>fmt1.format(v),
+  loma:v=>fmt1.format(v),sivukulu:v=>fmt1.format(v),
+  lisa:v=>fmt0.format(v)+"\u00A0€"
+};
+const yg=document.getElementById('yeargrid');
+WORKERS.forEach((w,i)=>{
+  const d=document.createElement('div');d.className='field';
+  d.innerHTML=`<div class="frow"><span class="flabel">${YEARS[i]}</span><span class="fval" id="w${i}_v"></span></div>
+    <input type="range" id="w${i}" min="0" max="5" step="0.5" value="${w}">`;
+  yg.appendChild(d);
+});
+function num(id){return parseFloat(document.getElementById(id).value);}
+function compute(){
+  const empWage=num('empWage'),empShifts=num('empShifts'),loma=num('loma'),sivukulu=num('sivukulu'),
+        outPrice=num('outPrice'),outShifts=num('outShifts'),lisaPv=num('lisa'),
+        shiftLen=num('shiftLen'),weeksYear=num('weeksYear');
+  const weeksWorked=Math.max(0,weeksYear-loma);
+  const empPer=empWage*shiftLen*empShifts*weeksYear*sivukulu;
+  const outPer=outPrice*shiftLen*outShifts*weeksWorked;
+  const lisaPer=lisaPv*outShifts*weeksWorked;
+  const workers=WORKERS.map((_,i)=>num('w'+i));
+  const palkka=workers.map(w=>empPer*w);
+  const ulkoist=workers.map(w=>outPer*w);
+  const saasto=palkka.map((p,i)=>p-ulkoist[i]);
+  const lisa=workers.map(w=>lisaPer*w);
+  return {palkka,ulkoist,saasto,lisa,total:saasto.reduce((a,b)=>a+b,0)};
+}
+function render(){
+  ids.forEach(id=>{const el=document.getElementById(id+'_v');if(el)el.textContent=labelFmt[id]?labelFmt[id](num(id)):num(id);});
+  WORKERS.forEach((_,i)=>{document.getElementById('w'+i+'_v').textContent=fmt1.format(num('w'+i));});
+  const r=compute();
+  const t=document.getElementById('totalSaasto');
+  t.textContent=eur(r.total);t.className='big '+(r.total<0?'neg':'pos');
+  drawChart(r.palkka,r.ulkoist);
+  document.getElementById('costTable').innerHTML=
+    `<thead><tr><th></th>${YEARS.map(y=>`<th>${y}</th>`).join('')}</tr></thead>
+     <tbody>
+       <tr><th>Palkkakulut (sis. sivukulut)</th>${r.palkka.map(v=>`<td>${eur(v)}</td>`).join('')}</tr>
+       <tr><th>Ulkoistettu työ (alv0)</th>${r.ulkoist.map(v=>`<td>${eur(v)}</td>`).join('')}</tr>
+       <tr class="saasto"><th>Säästö</th>${r.saasto.map(v=>`<td>${eur(v)}</td>`).join('')}</tr>
+     </tbody>`;
+  document.getElementById('lisaTable').innerHTML=
+    `<thead><tr><th></th>${YEARS.map(y=>`<th>${y}</th>`).join('')}</tr></thead>
+     <tbody><tr><th>Lisämyynti</th>${r.lisa.map(v=>`<td>${eur(v)}</td>`).join('')}</tr></tbody>`;
+}
+function drawChart(palkka,ulkoist){
+  const W=360,H=168,padL=8,padR=8,padB=26,padT=8;
+  const rawMax=Math.max(...palkka,...ulkoist,1);
+  const step=rawMax>150000?100000:(rawMax>60000?50000:20000);
+  const maxY=Math.ceil(rawMax/step)*step;
+  const plotH=H-padB-padT,plotW=W-padL-padR;
+  const gw=plotW/YEARS.length,bw=gw*0.28,gap=gw*0.08;
+  const y=v=>padT+plotH-(v/maxY)*plotH;
+  let s='<g font-family="inherit">';
+  for(let g=step;g<=maxY;g+=step){const yy=y(g);
+    s+=`<line x1="${padL}" y1="${yy}" x2="${W-padR}" y2="${yy}" stroke="#d9dbe4" stroke-dasharray="3 4" stroke-width="1"/>`;
+    s+=`<text x="${padL}" y="${yy-4}" font-size="10" fill="#9aa0ad">${fmt0.format(g)} €</text>`;}
+  s+=`<line x1="${padL}" y1="${y(0)}" x2="${W-padR}" y2="${y(0)}" stroke="#1f2433" stroke-width="1.5"/>`;
+  YEARS.forEach((yr,i)=>{const cx=padL+gw*i+gw/2,x1=cx-bw-gap/2,x2=cx+gap/2;
+    s+=`<rect x="${x1}" y="${y(palkka[i])}" width="${bw}" height="${Math.max(0,y(0)-y(palkka[i]))}" rx="2" fill="#9b2d4f"/>`;
+    s+=`<rect x="${x2}" y="${y(ulkoist[i])}" width="${bw}" height="${Math.max(0,y(0)-y(ulkoist[i]))}" rx="2" fill="#3f5060"/>`;
+    s+=`<text x="${cx}" y="${H-9}" font-size="13" fill="#6b7280" text-anchor="middle">${yr}</text>`;});
+  s+='</g>';
+  document.getElementById('chartwrap').innerHTML='<svg viewBox="0 0 360 168" width="360" height="168" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Kustannusten vertailu">'+s+'</svg>';
+}
+ids.forEach(id=>document.getElementById(id).addEventListener('input',render));
+WORKERS.forEach((_,i)=>document.getElementById('w'+i).addEventListener('input',render));
+render();
+if('serviceWorker' in navigator && location.protocol==='https:'){
+  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});
+}
+</script>
+</body>
+</html>
